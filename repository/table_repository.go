@@ -173,7 +173,7 @@ func (r *TableRepository) IsTableNumberDuplicateInFloor(ctx context.Context, flo
 			WHERE floor_id = $1
 			  AND table_number = $2
 			  AND is_active = TRUE
-			  AND ($3 = '' OR id <> $3)
+			  AND (NULLIF($3, '') IS NULL OR id <> NULLIF($3, '')::uuid)
 		);
 	`
 	var exists bool
