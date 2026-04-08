@@ -26,9 +26,13 @@ func main() {
 	if err := database.EnsureWaitersTable(db); err != nil {
 		log.Fatalf("database schema update failed: %v", err)
 	}
+	if err := database.EnsureMenuTables(db); err != nil {
+		log.Fatalf("database schema update failed: %v", err)
+	}
 
 	restaurantHandler := handler.NewRestaurantHandler(db)
 	waiterHandler := handler.NewWaiterHandler(db)
+	menuHandler := handler.NewMenuHandler(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /restaurants", restaurantHandler.CreateRestaurant)
@@ -45,6 +49,17 @@ func main() {
 	mux.HandleFunc("PUT /waiters/{id}", waiterHandler.UpdateWaiter)
 	mux.HandleFunc("DELETE /waiters/{id}", waiterHandler.DeleteWaiter)
 	mux.HandleFunc("POST /waiters/login", waiterHandler.LoginWaiter)
+
+	mux.HandleFunc("POST /api/v1/categories", menuHandler.CreateCategory)
+	mux.HandleFunc("GET /api/v1/categories", menuHandler.GetCategoriesByRestaurant)
+	mux.HandleFunc("PUT /api/v1/categories/{id}", menuHandler.UpdateCategory)
+	mux.HandleFunc("DELETE /api/v1/categories/{id}", menuHandler.DeleteCategory)
+
+	mux.HandleFunc("POST /api/v1/menu-items", menuHandler.CreateMenuItem)
+	mux.HandleFunc("GET /api/v1/menu-items", menuHandler.GetMenuItemsByRestaurant)
+	mux.HandleFunc("GET /api/v1/menu-items/category/{category_id}", menuHandler.GetMenuItemsByCategory)
+	mux.HandleFunc("PUT /api/v1/menu-items/{id}", menuHandler.UpdateMenuItem)
+	mux.HandleFunc("DELETE /api/v1/menu-items/{id}", menuHandler.DeleteMenuItem)
 
 	server := &http.Server{
 		Addr:         ":8080",

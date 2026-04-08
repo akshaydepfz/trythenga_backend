@@ -90,3 +90,40 @@ func EnsureWaitersTable(db *sql.DB) error {
 
 	return nil
 }
+
+func EnsureMenuTables(db *sql.DB) error {
+	createCategoriesTableQuery := `
+		CREATE TABLE IF NOT EXISTS categories (
+			id UUID PRIMARY KEY,
+			restaurant_id UUID NOT NULL REFERENCES restaurants(id),
+			name TEXT NOT NULL,
+			description TEXT,
+			is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+	`
+	if _, err := db.Exec(createCategoriesTableQuery); err != nil {
+		return fmt.Errorf("failed to create categories table: %w", err)
+	}
+
+	createMenuItemsTableQuery := `
+		CREATE TABLE IF NOT EXISTS menu_items (
+			id UUID PRIMARY KEY,
+			restaurant_id UUID NOT NULL REFERENCES restaurants(id),
+			category_id UUID NOT NULL REFERENCES categories(id),
+			name TEXT NOT NULL,
+			description TEXT,
+			price DOUBLE PRECISION NOT NULL CHECK (price >= 0),
+			is_available BOOLEAN NOT NULL DEFAULT TRUE,
+			image_url TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+	`
+	if _, err := db.Exec(createMenuItemsTableQuery); err != nil {
+		return fmt.Errorf("failed to create menu_items table: %w", err)
+	}
+
+	return nil
+}
