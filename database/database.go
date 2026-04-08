@@ -127,3 +127,45 @@ func EnsureMenuTables(db *sql.DB) error {
 
 	return nil
 }
+
+func EnsureOrderTables(db *sql.DB) error {
+	createOrdersTableQuery := `
+		CREATE TABLE IF NOT EXISTS orders (
+			id UUID PRIMARY KEY,
+			restaurant_id UUID NOT NULL REFERENCES restaurants(id),
+			table_id UUID NOT NULL REFERENCES tables(id),
+			waiter_id UUID NOT NULL REFERENCES waiters(id),
+			order_number BIGSERIAL UNIQUE,
+			status TEXT NOT NULL DEFAULT 'pending',
+			payment_status TEXT NOT NULL DEFAULT 'unpaid',
+			payment_method TEXT,
+			total_amount DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
+			notes TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+	`
+	if _, err := db.Exec(createOrdersTableQuery); err != nil {
+		return fmt.Errorf("failed to create orders table: %w", err)
+	}
+
+	createOrderItemsTableQuery := `
+		CREATE TABLE IF NOT EXISTS order_items (
+			id UUID PRIMARY KEY,
+			order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+			menu_item_id UUID NOT NULL REFERENCES menu_items(id),
+			name TEXT NOT NULL,
+			price DOUBLE PRECISION NOT NULL CHECK (price >= 0),
+			quantity INT NOT NULL CHECK (quantity > 0),
+			total_price DOUBLE PRECISION NOT NULL CHECK (total_price >= 0),
+			status TEXT NOT NULL DEFAULT 'pending',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+	`
+	if _, err := db.Exec(createOrderItemsTableQuery); err != nil {
+		return fmt.Errorf("failed to create order_items table: %w", err)
+	}
+
+	return nil
+}

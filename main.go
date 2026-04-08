@@ -29,12 +29,16 @@ func main() {
 	if err := database.EnsureMenuTables(db); err != nil {
 		log.Fatalf("database schema update failed: %v", err)
 	}
+	if err := database.EnsureOrderTables(db); err != nil {
+		log.Fatalf("database schema update failed: %v", err)
+	}
 
 	restaurantHandler := handler.NewRestaurantHandler(db)
 	waiterHandler := handler.NewWaiterHandler(db)
 	menuHandler := handler.NewMenuHandler(db)
 	floorHandler := handler.NewFloorHandler(db)
 	tableHandler := handler.NewTableHandler(db)
+	orderHandler := handler.NewOrderHandler(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /restaurants", restaurantHandler.CreateRestaurant)
@@ -77,6 +81,17 @@ func main() {
 	mux.HandleFunc("PUT /api/v1/tables/{id}/position", tableHandler.UpdateTablePosition)
 	mux.HandleFunc("PUT /api/v1/tables/{id}/status", tableHandler.UpdateTableStatus)
 	mux.HandleFunc("PUT /api/v1/tables/positions", tableHandler.BulkUpdateTablePositions)
+
+	mux.HandleFunc("POST /api/v1/orders", orderHandler.CreateOrder)
+	mux.HandleFunc("GET /api/v1/orders", orderHandler.GetOrdersByRestaurant)
+	mux.HandleFunc("GET /api/v1/orders/{id}", orderHandler.GetOrderByID)
+	mux.HandleFunc("POST /api/v1/orders/{id}/items", orderHandler.AddItemToOrder)
+	mux.HandleFunc("PUT /api/v1/orders/items/{item_id}", orderHandler.UpdateItemQuantity)
+	mux.HandleFunc("DELETE /api/v1/orders/items/{item_id}", orderHandler.RemoveItem)
+	mux.HandleFunc("PUT /api/v1/orders/{id}/status", orderHandler.UpdateOrderStatus)
+	mux.HandleFunc("PUT /api/v1/orders/items/{item_id}/status", orderHandler.UpdateItemStatus)
+	mux.HandleFunc("PUT /api/v1/orders/{id}/payment", orderHandler.CompletePayment)
+	mux.HandleFunc("GET /api/v1/tables/{table_id}/current-order", orderHandler.GetCurrentOrderByTable)
 
 	server := &http.Server{
 		Addr:         ":8080",
