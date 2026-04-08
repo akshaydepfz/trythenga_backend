@@ -33,6 +33,8 @@ func main() {
 	restaurantHandler := handler.NewRestaurantHandler(db)
 	waiterHandler := handler.NewWaiterHandler(db)
 	menuHandler := handler.NewMenuHandler(db)
+	floorHandler := handler.NewFloorHandler(db)
+	tableHandler := handler.NewTableHandler(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /restaurants", restaurantHandler.CreateRestaurant)
@@ -60,6 +62,21 @@ func main() {
 	mux.HandleFunc("GET /api/v1/menu-items/category/{category_id}", menuHandler.GetMenuItemsByCategory)
 	mux.HandleFunc("PUT /api/v1/menu-items/{id}", menuHandler.UpdateMenuItem)
 	mux.HandleFunc("DELETE /api/v1/menu-items/{id}", menuHandler.DeleteMenuItem)
+
+	mux.HandleFunc("POST /api/v1/floors", floorHandler.CreateFloor)
+	mux.HandleFunc("GET /api/v1/floors", floorHandler.GetFloorsByRestaurant)
+	mux.HandleFunc("GET /api/v1/floors/{id}", floorHandler.GetFloorByID)
+	mux.HandleFunc("PUT /api/v1/floors/{id}", floorHandler.UpdateFloor)
+	mux.HandleFunc("DELETE /api/v1/floors/{id}", floorHandler.DeleteFloor)
+
+	mux.HandleFunc("POST /api/v1/tables", tableHandler.CreateTable)
+	mux.HandleFunc("GET /api/v1/tables", tableHandler.GetTablesByFloor)
+	mux.HandleFunc("GET /api/v1/tables/{id}", tableHandler.GetTableByID)
+	mux.HandleFunc("PUT /api/v1/tables/{id}", tableHandler.UpdateTable)
+	mux.HandleFunc("DELETE /api/v1/tables/{id}", tableHandler.DeleteTable)
+	mux.HandleFunc("PUT /api/v1/tables/{id}/position", tableHandler.UpdateTablePosition)
+	mux.HandleFunc("PUT /api/v1/tables/{id}/status", tableHandler.UpdateTableStatus)
+	mux.HandleFunc("PUT /api/v1/tables/positions", tableHandler.BulkUpdateTablePositions)
 
 	server := &http.Server{
 		Addr:         ":8080",
