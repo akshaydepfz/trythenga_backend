@@ -135,6 +135,7 @@ func EnsureOrderTables(db *sql.DB) error {
 			restaurant_id UUID NOT NULL REFERENCES restaurants(id),
 			table_id UUID NOT NULL REFERENCES tables(id),
 			waiter_id UUID NOT NULL REFERENCES waiters(id),
+			guest_count INT NOT NULL DEFAULT 1,
 			order_number BIGSERIAL UNIQUE,
 			status TEXT NOT NULL DEFAULT 'pending',
 			payment_status TEXT NOT NULL DEFAULT 'unpaid',
@@ -170,6 +171,7 @@ func EnsureOrderTables(db *sql.DB) error {
 	ensureOrdersColumnsQuery := `
 		ALTER TABLE orders
 		ADD COLUMN IF NOT EXISTS payment_method TEXT,
+		ADD COLUMN IF NOT EXISTS guest_count INT NOT NULL DEFAULT 1,
 		ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 	`

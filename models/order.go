@@ -7,6 +7,7 @@ type Order struct {
 	RestaurantID  string      `json:"restaurant_id"`
 	TableID       string      `json:"table_id"`
 	WaiterID      string      `json:"waiter_id"`
+	GuestCount    int         `json:"guest_count"`
 	OrderNumber   int64       `json:"order_number"`
 	Status        string      `json:"status"`
 	PaymentStatus string      `json:"payment_status"`
@@ -40,6 +41,7 @@ type CreateOrderRequest struct {
 	RestaurantID string                 `json:"restaurant_id"`
 	TableID      string                 `json:"table_id"`
 	WaiterID     string                 `json:"waiter_id"`
+	GuestCount   int                    `json:"guest_count"`
 	Items        []CreateOrderItemInput `json:"items"`
 	Notes        string                 `json:"notes"`
 }

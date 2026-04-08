@@ -56,7 +56,7 @@ func (r *OrderRepository) CreateOrderTx(ctx context.Context, order models.Order,
 
 func (r *OrderRepository) GetOrdersByRestaurant(ctx context.Context, restaurantID string) ([]models.Order, error) {
 	query := `
-		SELECT id, restaurant_id, table_id, waiter_id, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
+		SELECT id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
 		FROM orders
 		WHERE restaurant_id = $1 AND status <> 'cancelled'
 		ORDER BY created_at DESC;
@@ -83,7 +83,7 @@ func (r *OrderRepository) GetOrdersByRestaurant(ctx context.Context, restaurantI
 
 func (r *OrderRepository) GetOrderByID(ctx context.Context, orderID string) (models.Order, error) {
 	row := r.DB.QueryRowContext(ctx, `
-		SELECT id, restaurant_id, table_id, waiter_id, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
+		SELECT id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
 		FROM orders
 		WHERE id = $1;
 	`, orderID)
@@ -95,7 +95,7 @@ func (r *OrderRepository) UpdateOrderStatus(ctx context.Context, orderID, status
 		UPDATE orders
 		SET status = $2, updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, restaurant_id, table_id, waiter_id, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at;
+		RETURNING id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at;
 	`, orderID, status)
 	return scanOrder(row)
 }
@@ -115,7 +115,7 @@ func (r *OrderRepository) UpdatePaymentStatus(ctx context.Context, orderID, paym
 		UPDATE orders
 		SET payment_status = $2, payment_method = NULLIF($3, ''), updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, restaurant_id, table_id, waiter_id, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at;
+		RETURNING id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at;
 	`, orderID, paymentStatus, paymentMethod)
 	updatedOrder, err := scanOrder(row)
 	if err != nil {
@@ -326,7 +326,7 @@ func (r *OrderRepository) UpdateItemStatus(ctx context.Context, itemID, status s
 
 func (r *OrderRepository) GetCurrentOrderByTable(ctx context.Context, tableID string) (models.Order, error) {
 	row := r.DB.QueryRowContext(ctx, `
-		SELECT id, restaurant_id, table_id, waiter_id, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
+		SELECT id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
 		FROM orders
 		WHERE table_id = $1
 		  AND status IN ('pending', 'preparing', 'served')
@@ -394,10 +394,10 @@ func (r *OrderRepository) WaiterByID(ctx context.Context, waiterID string) (mode
 
 func (r *OrderRepository) insertOrder(ctx context.Context, tx *sql.Tx, order models.Order) (models.Order, error) {
 	row := tx.QueryRowContext(ctx, `
-		INSERT INTO orders (id, restaurant_id, table_id, waiter_id, status, payment_status, total_amount, notes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''))
-		RETURNING id, restaurant_id, table_id, waiter_id, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at;
-	`, order.ID, order.RestaurantID, order.TableID, order.WaiterID, order.Status, order.PaymentStatus, order.TotalAmount, order.Notes)
+		INSERT INTO orders (id, restaurant_id, table_id, waiter_id, guest_count, status, payment_status, total_amount, notes)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''))
+		RETURNING id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at;
+	`, order.ID, order.RestaurantID, order.TableID, order.WaiterID, order.GuestCount, order.Status, order.PaymentStatus, order.TotalAmount, order.Notes)
 	return scanOrder(row)
 }
 
@@ -422,7 +422,7 @@ func (r *OrderRepository) recalculateOrderTotalTx(ctx context.Context, tx *sql.T
 
 func (r *OrderRepository) getOrderByIDTx(ctx context.Context, tx *sql.Tx, orderID string) (models.Order, error) {
 	row := tx.QueryRowContext(ctx, `
-		SELECT id, restaurant_id, table_id, waiter_id, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
+		SELECT id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
 		FROM orders
 		WHERE id = $1;
 	`, orderID)
@@ -445,6 +445,7 @@ func scanOrder(row *sql.Row) (models.Order, error) {
 		&order.RestaurantID,
 		&order.TableID,
 		&order.WaiterID,
+		&order.GuestCount,
 		&order.OrderNumber,
 		&order.Status,
 		&order.PaymentStatus,
@@ -464,6 +465,7 @@ func scanOrderFromRows(rows *sql.Rows) (models.Order, error) {
 		&order.RestaurantID,
 		&order.TableID,
 		&order.WaiterID,
+		&order.GuestCount,
 		&order.OrderNumber,
 		&order.Status,
 		&order.PaymentStatus,

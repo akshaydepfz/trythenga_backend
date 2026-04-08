@@ -57,6 +57,9 @@ func (s *OrderService) CreateOrder(ctx context.Context, req models.CreateOrderRe
 	if len(req.Items) == 0 {
 		return models.OrderDetails{}, errors.New("items are required")
 	}
+	if req.GuestCount <= 0 {
+		req.GuestCount = 1
+	}
 
 	if err := s.validateRestaurantRelations(ctx, req.RestaurantID, req.TableID, req.WaiterID); err != nil {
 		return models.OrderDetails{}, err
@@ -101,6 +104,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, req models.CreateOrderRe
 		RestaurantID:  req.RestaurantID,
 		TableID:       req.TableID,
 		WaiterID:      req.WaiterID,
+		GuestCount:    req.GuestCount,
 		Status:        "pending",
 		PaymentStatus: "unpaid",
 		TotalAmount:   totalAmount,
