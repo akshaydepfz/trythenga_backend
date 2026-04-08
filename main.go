@@ -86,7 +86,7 @@ func main() {
 	mux.HandleFunc("GET /api/v1/orders", orderHandler.GetOrdersByRestaurant)
 	mux.HandleFunc("GET /api/v1/orders/{id}", orderHandler.GetOrderByID)
 	mux.HandleFunc("POST /api/v1/orders/{id}/items", orderHandler.AddItemToOrder)
-	mux.HandleFunc("PUT /api/v1/orders/items/{item_id}", orderHandler.UpdateItemQuantity)
+	mux.HandleFunc("PUT /api/v1/orders/items/{item_id}/quantity", orderHandler.UpdateItemQuantity)
 	mux.HandleFunc("DELETE /api/v1/orders/items/{item_id}", orderHandler.RemoveItem)
 	mux.HandleFunc("PUT /api/v1/orders/{id}/status", orderHandler.UpdateOrderStatus)
 	mux.HandleFunc("PUT /api/v1/orders/items/{item_id}/status", orderHandler.UpdateItemStatus)
