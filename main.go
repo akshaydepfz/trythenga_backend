@@ -25,14 +25,23 @@ func main() {
 	}
 
 	restaurantHandler := handler.NewRestaurantHandler(db)
+	waiterHandler := handler.NewWaiterHandler(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /restaurants", restaurantHandler.CreateRestaurant)
 	mux.HandleFunc("GET /restaurants", restaurantHandler.GetRestaurants)
 	mux.HandleFunc("POST /restaurants/login", restaurantHandler.LoginRestaurant)
+	mux.HandleFunc("GET /restaurants/{restaurant_id}/waiters", waiterHandler.GetWaitersByRestaurantID)
 	mux.HandleFunc("GET /restaurants/{id}", restaurantHandler.GetRestaurantByID)
 	mux.HandleFunc("PUT /restaurants/{id}", restaurantHandler.UpdateRestaurant)
 	mux.HandleFunc("DELETE /restaurants/{id}", restaurantHandler.DisableRestaurant)
+
+	mux.HandleFunc("POST /waiters", waiterHandler.CreateWaiter)
+	mux.HandleFunc("GET /waiters", waiterHandler.GetWaiters)
+	mux.HandleFunc("GET /waiters/{id}", waiterHandler.GetWaiterByID)
+	mux.HandleFunc("PUT /waiters/{id}", waiterHandler.UpdateWaiter)
+	mux.HandleFunc("DELETE /waiters/{id}", waiterHandler.DeleteWaiter)
+	mux.HandleFunc("POST /waiters/login", waiterHandler.LoginWaiter)
 
 	server := &http.Server{
 		Addr:         ":8080",
