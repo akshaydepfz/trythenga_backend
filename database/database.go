@@ -167,5 +167,24 @@ func EnsureOrderTables(db *sql.DB) error {
 		return fmt.Errorf("failed to create order_items table: %w", err)
 	}
 
+	ensureOrdersColumnsQuery := `
+		ALTER TABLE orders
+		ADD COLUMN IF NOT EXISTS payment_method TEXT,
+		ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+	`
+	if _, err := db.Exec(ensureOrdersColumnsQuery); err != nil {
+		return fmt.Errorf("failed to ensure orders columns: %w", err)
+	}
+
+	ensureOrderItemsColumnsQuery := `
+		ALTER TABLE order_items
+		ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+	`
+	if _, err := db.Exec(ensureOrderItemsColumnsQuery); err != nil {
+		return fmt.Errorf("failed to ensure order_items columns: %w", err)
+	}
+
 	return nil
 }
