@@ -27,7 +27,7 @@ func NewWaiterRepository(db *sql.DB) *WaiterRepository {
 func (r *WaiterRepository) CreateWaiter(ctx context.Context, waiter models.Waiter) (models.Waiter, error) {
 	query := `
 		INSERT INTO waiters (
-			id, restaurant_id, name, phone, password_hash, role, is_active
+			id, restaurant_id, name, phone, password, role, is_active
 		)
 		VALUES (
 			$1, $2, $3, $4, $5, $6, $7
@@ -107,7 +107,7 @@ func (r *WaiterRepository) UpdateWaiter(ctx context.Context, waiter models.Waite
 			phone = $3,
 			role = $4,
 			is_active = $5,
-			password_hash = COALESCE(NULLIF($6, ''), password_hash),
+			password = COALESCE(NULLIF($6, ''), password),
 			updated_at = NOW()
 		WHERE id = $1
 		RETURNING id, restaurant_id, name, phone, role, is_active, created_at, updated_at;
@@ -142,7 +142,7 @@ func (r *WaiterRepository) SoftDeleteWaiter(ctx context.Context, id string) (mod
 
 func (r *WaiterRepository) GetWaiterByName(ctx context.Context, name string) (models.Waiter, error) {
 	query := `
-		SELECT id, restaurant_id, name, phone, role, is_active, created_at, updated_at, password_hash
+		SELECT id, restaurant_id, name, phone, role, is_active, created_at, updated_at, password
 		FROM waiters
 		WHERE LOWER(name) = LOWER($1);
 	`
