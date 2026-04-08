@@ -8,12 +8,14 @@ type Restaurant struct {
 	OwnerName       string    `json:"owner_name"`
 	Phone           string    `json:"phone"`
 	Email           string    `json:"email"`
+	Password        string    `json:"password,omitempty"`
 	Address         string    `json:"address"`
 	City            string    `json:"city"`
 	State           string    `json:"state"`
 	Pincode         string    `json:"pincode"`
 	Country         string    `json:"country"`
 	GSTNumber       string    `json:"gst_number"`
+	PasswordHash    string    `json:"-"`
 	LogoURL         string    `json:"logo_url"`
 	OpeningTime     string    `json:"opening_time"`
 	ClosingTime     string    `json:"closing_time"`

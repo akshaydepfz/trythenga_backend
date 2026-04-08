@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS restaurants (
     pincode TEXT NOT NULL,
     country TEXT NOT NULL,
     gst_number TEXT NOT NULL,
+    password_hash TEXT,
     logo_url TEXT NOT NULL,
     opening_time TEXT NOT NULL,
     closing_time TEXT NOT NULL,

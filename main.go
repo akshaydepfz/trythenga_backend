@@ -21,11 +21,16 @@ func main() {
 	}
 	defer db.Close()
 
+	if err := database.EnsureRestaurantPasswordColumn(db); err != nil {
+		log.Fatalf("database schema update failed: %v", err)
+	}
+
 	restaurantHandler := handler.NewRestaurantHandler(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /restaurants", restaurantHandler.CreateRestaurant)
 	mux.HandleFunc("GET /restaurants", restaurantHandler.GetRestaurants)
+	mux.HandleFunc("POST /restaurants/login", restaurantHandler.LoginRestaurant)
 	mux.HandleFunc("GET /restaurants/{id}", restaurantHandler.GetRestaurantByID)
 	mux.HandleFunc("PUT /restaurants/{id}", restaurantHandler.UpdateRestaurant)
 	mux.HandleFunc("DELETE /restaurants/{id}", restaurantHandler.DisableRestaurant)
@@ -61,11 +66,11 @@ func main() {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	allowedOrigins := map[string]bool{
-		"http://localhost:3000": true,
-		"http://localhost:5173": true,
+		"http://localhost:3000":  true,
+		"http://localhost:5173":  true,
 		"http://localhost:52564": true,
-		"http://127.0.0.1:3000": true,
-		"http://127.0.0.1:5173": true,
+		"http://127.0.0.1:3000":  true,
+		"http://127.0.0.1:5173":  true,
 		"http://127.0.0.1:52564": true,
 	}
 

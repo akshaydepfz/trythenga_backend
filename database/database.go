@@ -10,10 +10,10 @@ import (
 func Connect() (*sql.DB, error) {
 
 	const (
-		host     = "ep-summer-dust-amkn8he2.c-5.us-east-1.pg.koyeb.app"
+		host     = "ep-bold-unit-a1um73lm.ap-southeast-1.pg.koyeb.app"
 		port     = 5432
 		user     = "koyeb-adm"
-		password = "npg_UvWuyLqa93Ab"
+		password = "npg_qY2uILyNb3sP"
 		dbname   = "koyebdb"
 	)
 
@@ -29,4 +29,15 @@ func Connect() (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func EnsureRestaurantPasswordColumn(db *sql.DB) error {
+	query := `
+		ALTER TABLE restaurants
+		ADD COLUMN IF NOT EXISTS password_hash TEXT;
+	`
+	if _, err := db.Exec(query); err != nil {
+		return fmt.Errorf("failed to alter restaurants table for password_hash: %w", err)
+	}
+	return nil
 }

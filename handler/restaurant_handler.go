@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
 	"trythenga.com/helper"
 	"trythenga.com/models"
@@ -33,10 +34,18 @@ func (h *RestaurantHandler) CreateRestaurant(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := validateRestaurantPayload(payload); err != nil {
+	if err := validateRestaurantPayload(payload, true); err != nil {
 		helper.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	passwordHash, err := hashPassword(payload.Password)
+	if err != nil {
+		helper.JSONError(w, "failed to secure password", http.StatusInternalServerError)
+		return
+	}
+	payload.PasswordHash = passwordHash
+	payload.Password = ""
 
 	payload.ID = uuid.NewString()
 	payload.Plan = normalizePlan(payload.Plan)
@@ -48,11 +57,11 @@ func (h *RestaurantHandler) CreateRestaurant(w http.ResponseWriter, r *http.Requ
 	query := `
 		INSERT INTO restaurants (
 			id, name, owner_name, phone, email, address, city, state, pincode, country,
-			gst_number, logo_url, opening_time, closing_time, seating_capacity, plan, status
+			gst_number, password_hash, logo_url, opening_time, closing_time, seating_capacity, plan, status
 		)
 		VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-			$11, $12, $13, $14, $15, $16, $17
+			$11, $12, $13, $14, $15, $16, $17, $18
 		)
 		RETURNING id, name, owner_name, phone, email, address, city, state, pincode, country,
 			gst_number, logo_url, opening_time, closing_time, seating_capacity, plan, status, created_at, updated_at;
@@ -72,6 +81,7 @@ func (h *RestaurantHandler) CreateRestaurant(w http.ResponseWriter, r *http.Requ
 		payload.Pincode,
 		payload.Country,
 		payload.GSTNumber,
+		payload.PasswordHash,
 		payload.LogoURL,
 		payload.OpeningTime,
 		payload.ClosingTime,
@@ -210,10 +220,20 @@ func (h *RestaurantHandler) UpdateRestaurant(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := validateRestaurantPayload(payload); err != nil {
+	if err := validateRestaurantPayload(payload, false); err != nil {
 		helper.JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	if strings.TrimSpace(payload.Password) != "" {
+		passwordHash, err := hashPassword(payload.Password)
+		if err != nil {
+			helper.JSONError(w, "failed to secure password", http.StatusInternalServerError)
+			return
+		}
+		payload.PasswordHash = passwordHash
+	}
+	payload.Password = ""
 
 	payload.Plan = normalizePlan(payload.Plan)
 	payload.Status = normalizeStatus(payload.Status)
@@ -233,12 +253,13 @@ func (h *RestaurantHandler) UpdateRestaurant(w http.ResponseWriter, r *http.Requ
 			pincode = $9,
 			country = $10,
 			gst_number = $11,
-			logo_url = $12,
-			opening_time = $13,
-			closing_time = $14,
-			seating_capacity = $15,
-			plan = $16,
-			status = $17,
+			password_hash = COALESCE(NULLIF($12, ''), password_hash),
+			logo_url = $13,
+			opening_time = $14,
+			closing_time = $15,
+			seating_capacity = $16,
+			plan = $17,
+			status = $18,
 			updated_at = NOW()
 		WHERE id = $1
 		RETURNING id, name, owner_name, phone, email, address, city, state, pincode, country,
@@ -259,6 +280,7 @@ func (h *RestaurantHandler) UpdateRestaurant(w http.ResponseWriter, r *http.Requ
 		payload.Pincode,
 		payload.Country,
 		payload.GSTNumber,
+		payload.PasswordHash,
 		payload.LogoURL,
 		payload.OpeningTime,
 		payload.ClosingTime,
@@ -313,6 +335,84 @@ func (h *RestaurantHandler) DisableRestaurant(w http.ResponseWriter, r *http.Req
 	helper.JSONResponse(w, updatedRestaurant)
 }
 
+func (h *RestaurantHandler) LoginRestaurant(w http.ResponseWriter, r *http.Request) {
+	type loginRequest struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	type loginResponse struct {
+		Login      bool               `json:"login"`
+		Restaurant *models.Restaurant `json:"restaurant,omitempty"`
+	}
+
+	var payload loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		helper.JSONError(w, "invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	email := strings.TrimSpace(payload.Email)
+	password := strings.TrimSpace(payload.Password)
+	if email == "" || password == "" {
+		helper.JSONResponse(w, loginResponse{Login: false})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
+
+	var restaurant models.Restaurant
+	var storedHash string
+	query := `
+		SELECT id, name, owner_name, phone, email, address, city, state, pincode, country,
+			gst_number, logo_url, opening_time, closing_time, seating_capacity, plan, status, created_at, updated_at, password_hash
+		FROM restaurants
+		WHERE LOWER(email) = LOWER($1)
+	`
+
+	err := h.DB.QueryRowContext(ctx, query, email).Scan(
+		&restaurant.ID,
+		&restaurant.Name,
+		&restaurant.OwnerName,
+		&restaurant.Phone,
+		&restaurant.Email,
+		&restaurant.Address,
+		&restaurant.City,
+		&restaurant.State,
+		&restaurant.Pincode,
+		&restaurant.Country,
+		&restaurant.GSTNumber,
+		&restaurant.LogoURL,
+		&restaurant.OpeningTime,
+		&restaurant.ClosingTime,
+		&restaurant.SeatingCapacity,
+		&restaurant.Plan,
+		&restaurant.Status,
+		&restaurant.CreatedAt,
+		&restaurant.UpdatedAt,
+		&storedHash,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			helper.JSONResponse(w, loginResponse{Login: false})
+			return
+		}
+		helper.JSONError(w, "failed to verify credentials", http.StatusInternalServerError)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)); err != nil {
+		helper.JSONResponse(w, loginResponse{Login: false})
+		return
+	}
+
+	helper.JSONResponse(w, loginResponse{
+		Login:      true,
+		Restaurant: &restaurant,
+	})
+}
+
 func scanRestaurant(row *sql.Row) (models.Restaurant, error) {
 	var restaurant models.Restaurant
 	err := row.Scan(
@@ -339,7 +439,7 @@ func scanRestaurant(row *sql.Row) (models.Restaurant, error) {
 	return restaurant, err
 }
 
-func validateRestaurantPayload(restaurant models.Restaurant) error {
+func validateRestaurantPayload(restaurant models.Restaurant, requirePassword bool) error {
 	if strings.TrimSpace(restaurant.Name) == "" {
 		return errors.New("name is required")
 	}
@@ -351,6 +451,9 @@ func validateRestaurantPayload(restaurant models.Restaurant) error {
 	}
 	if strings.TrimSpace(restaurant.Email) == "" {
 		return errors.New("email is required")
+	}
+	if requirePassword && strings.TrimSpace(restaurant.Password) == "" {
+		return errors.New("password is required")
 	}
 	if strings.TrimSpace(restaurant.Plan) != "" && !isValidPlan(restaurant.Plan) {
 		return errors.New("plan must be one of: free, premium")
@@ -397,4 +500,12 @@ func normalizeStatus(status string) string {
 
 func itoa(v int) string {
 	return strconv.Itoa(v)
+}
+
+func hashPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(strings.TrimSpace(password)), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
 }
