@@ -23,6 +23,9 @@ func main() {
 	if err := database.EnsureRestaurantPasswordColumn(db); err != nil {
 		log.Fatalf("database schema update failed: %v", err)
 	}
+	if err := database.EnsureWaitersTable(db); err != nil {
+		log.Fatalf("database schema update failed: %v", err)
+	}
 
 	restaurantHandler := handler.NewRestaurantHandler(db)
 	waiterHandler := handler.NewWaiterHandler(db)

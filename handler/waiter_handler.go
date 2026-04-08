@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -313,6 +314,7 @@ func (h *WaiterHandler) CreateWaiter(w http.ResponseWriter, r *http.Request) {
 			helper.JSONError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		log.Printf("create waiter failed: %v", err)
 		helper.JSONError(w, "failed to create waiter", http.StatusInternalServerError)
 		return
 	}

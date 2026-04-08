@@ -41,3 +41,23 @@ func EnsureRestaurantPasswordColumn(db *sql.DB) error {
 	}
 	return nil
 }
+
+func EnsureWaitersTable(db *sql.DB) error {
+	query := `
+		CREATE TABLE IF NOT EXISTS waiters (
+			id UUID PRIMARY KEY,
+			restaurant_id UUID NOT NULL REFERENCES restaurants(id),
+			name TEXT NOT NULL,
+			phone TEXT,
+			password_hash TEXT NOT NULL,
+			role TEXT NOT NULL DEFAULT 'waiter',
+			is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+	`
+	if _, err := db.Exec(query); err != nil {
+		return fmt.Errorf("failed to create waiters table: %w", err)
+	}
+	return nil
+}
