@@ -43,7 +43,7 @@ func EnsureRestaurantPasswordColumn(db *sql.DB) error {
 }
 
 func EnsureWaitersTable(db *sql.DB) error {
-	query := `
+	createTableQuery := `
 		CREATE TABLE IF NOT EXISTS waiters (
 			id UUID PRIMARY KEY,
 			restaurant_id UUID NOT NULL REFERENCES restaurants(id),
@@ -56,8 +56,37 @@ func EnsureWaitersTable(db *sql.DB) error {
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 	`
-	if _, err := db.Exec(query); err != nil {
+	if _, err := db.Exec(createTableQuery); err != nil {
 		return fmt.Errorf("failed to create waiters table: %w", err)
 	}
+
+	ensurePasswordHashColumnQuery := `
+		ALTER TABLE waiters
+		ADD COLUMN IF NOT EXISTS password_hash TEXT;
+	`
+	if _, err := db.Exec(ensurePasswordHashColumnQuery); err != nil {
+		return fmt.Errorf("failed to add waiters.password_hash column: %w", err)
+	}
+
+	migrateLegacyPasswordQuery := `
+		DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1
+				FROM information_schema.columns
+				WHERE table_schema = 'public'
+				  AND table_name = 'waiters'
+				  AND column_name = 'password'
+			) THEN
+				UPDATE waiters
+				SET password_hash = password
+				WHERE password_hash IS NULL AND password IS NOT NULL;
+			END IF;
+		END $$;
+	`
+	if _, err := db.Exec(migrateLegacyPasswordQuery); err != nil {
+		return fmt.Errorf("failed to migrate waiters legacy password data: %w", err)
+	}
+
 	return nil
 }

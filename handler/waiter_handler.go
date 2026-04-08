@@ -186,6 +186,9 @@ func (s *WaiterService) CreateWaiter(ctx context.Context, waiter models.Waiter) 
 	if waiter.RestaurantID == "" {
 		return models.Waiter{}, errors.New("restaurant_id is required")
 	}
+	if strings.TrimSpace(waiter.Password) == "" {
+		return models.Waiter{}, errors.New("password is required")
+	}
 
 	if strings.TrimSpace(waiter.Role) == "" {
 		waiter.Role = "waiter"
@@ -310,7 +313,7 @@ func (h *WaiterHandler) CreateWaiter(w http.ResponseWriter, r *http.Request) {
 
 	created, err := h.service.CreateWaiter(ctx, payload)
 	if err != nil {
-		if err.Error() == "name is required" || err.Error() == "restaurant_id is required" {
+		if err.Error() == "name is required" || err.Error() == "restaurant_id is required" || err.Error() == "password is required" {
 			helper.JSONError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
