@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/google/uuid"
 )
 
@@ -52,13 +51,13 @@ func UploadImageToS3(ctx context.Context, file multipart.File, header *multipart
 		return "", errors.New("only jpeg, png and webp images are allowed")
 	}
 
-	bucket := strings.TrimSpace(os.Getenv("S3_BUCKET"))
-	region := strings.TrimSpace(os.Getenv("AWS_REGION"))
-	if bucket == "" || region == "" {
+	s3Bucket := strings.TrimSpace(os.Getenv("S3_BUCKET"))
+	s3Region := strings.TrimSpace(os.Getenv("AWS_REGION"))
+	if s3Bucket == "" || s3Region == "" {
 		return "", errors.New("aws s3 configuration is missing")
 	}
 
-	cfg, err := config.LoadDefaultConfig(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(s3Region))
 	if err != nil {
 		return "", err
 	}
@@ -70,17 +69,16 @@ func UploadImageToS3(ctx context.Context, file multipart.File, header *multipart
 	objectKey := strings.Trim(strings.TrimSpace(folder), "/") + "/" + fileName
 
 	_, err = client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(bucket),
+		Bucket:      aws.String(s3Bucket),
 		Key:         aws.String(objectKey),
 		Body:        bytes.NewReader(data),
 		ContentType: aws.String(detectedMimeType),
-		ACL:         types.ObjectCannedACLPublicRead,
 	})
 	if err != nil {
 		return "", err
 	}
 
-	publicURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucket, region, objectKey)
+	publicURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s3Bucket, s3Region, objectKey)
 	return publicURL, nil
 }
 
