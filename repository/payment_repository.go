@@ -108,7 +108,7 @@ func (r *PaymentRepository) GetPaymentByID(ctx context.Context, id string) (mode
 
 func (r *PaymentRepository) GetOrderByPaymentID(ctx context.Context, paymentID string) (models.Order, error) {
 	row := r.DB.QueryRowContext(ctx, `
-		SELECT o.id, o.restaurant_id, o.table_id, o.waiter_id, o.guest_count, o.order_number, o.status, o.payment_status, COALESCE(o.payment_method, ''), o.total_amount, COALESCE(o.notes, ''), o.created_at, o.updated_at
+		SELECT o.id, o.restaurant_id, o.table_id, COALESCE(o.table_number, ''), o.waiter_id, o.guest_count, o.order_number, o.status, o.payment_status, COALESCE(o.payment_method, ''), o.total_amount, COALESCE(o.notes, ''), o.created_at, o.updated_at
 		FROM orders o
 		INNER JOIN payments p ON p.order_id = o.id
 		WHERE p.id = $1;
@@ -182,7 +182,7 @@ func (r *PaymentRepository) GetTotalPaidByOrder(ctx context.Context, orderID str
 
 func (r *PaymentRepository) GetOrderByID(ctx context.Context, orderID string) (models.Order, error) {
 	row := r.DB.QueryRowContext(ctx, `
-		SELECT id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
+		SELECT id, restaurant_id, table_id, COALESCE(table_number, ''), waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
 		FROM orders
 		WHERE id = $1;
 	`, orderID)
@@ -191,7 +191,7 @@ func (r *PaymentRepository) GetOrderByID(ctx context.Context, orderID string) (m
 
 func (r *PaymentRepository) getOrderForPaymentTx(ctx context.Context, tx *sql.Tx, orderID string) (models.Order, error) {
 	row := tx.QueryRowContext(ctx, `
-		SELECT id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
+		SELECT id, restaurant_id, table_id, COALESCE(table_number, ''), waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
 		FROM orders
 		WHERE id = $1
 		FOR UPDATE;
@@ -210,7 +210,7 @@ func (r *PaymentRepository) getTotalPaidByOrderTx(ctx context.Context, tx *sql.T
 
 func (r *PaymentRepository) getOrderByIDTx(ctx context.Context, tx *sql.Tx, orderID string) (models.Order, error) {
 	row := tx.QueryRowContext(ctx, `
-		SELECT id, restaurant_id, table_id, waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
+		SELECT id, restaurant_id, table_id, COALESCE(table_number, ''), waiter_id, guest_count, order_number, status, payment_status, COALESCE(payment_method, ''), total_amount, COALESCE(notes, ''), created_at, updated_at
 		FROM orders
 		WHERE id = $1;
 	`, orderID)

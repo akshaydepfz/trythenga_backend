@@ -6,6 +6,7 @@ type Order struct {
 	ID            string      `json:"id"`
 	RestaurantID  string      `json:"restaurant_id"`
 	TableID       string      `json:"table_id"`
+	TableNumber   string      `json:"table_number"`
 	WaiterID      string      `json:"waiter_id"`
 	GuestCount    int         `json:"guest_count"`
 	OrderNumber   int64       `json:"order_number"`
