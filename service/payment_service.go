@@ -100,6 +100,31 @@ func (s *PaymentService) GetPaymentByID(ctx context.Context, id string) (models.
 	return s.repo.GetPaymentByID(ctx, id)
 }
 
+func (s *PaymentService) GetOrderByPaymentID(ctx context.Context, paymentID string) (models.OrderDetails, error) {
+	paymentID = strings.TrimSpace(paymentID)
+	if paymentID == "" {
+		return models.OrderDetails{}, errors.New("payment_id is required")
+	}
+
+	order, err := s.repo.GetOrderByPaymentID(ctx, paymentID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.OrderDetails{}, errors.New("payment not found")
+		}
+		return models.OrderDetails{}, err
+	}
+
+	orderItems, err := s.repo.GetOrderItemsByOrderID(ctx, order.ID)
+	if err != nil {
+		return models.OrderDetails{}, err
+	}
+
+	return models.OrderDetails{
+		Order: order,
+		Items: orderItems,
+	}, nil
+}
+
 func (s *PaymentService) UpdatePayment(ctx context.Context, id, status string) (models.Payment, error) {
 	status = normalizePaymentValue(status)
 	if status == "" {
@@ -164,11 +189,13 @@ func normalizePaymentValue(value string) string {
 func IsPaymentValidationError(err error) bool {
 	switch err.Error() {
 	case "order_id is required",
+		"payment_id is required",
 		"amount must be greater than 0",
 		"payment_method is required",
 		"invalid payment_method value",
 		"order does not belong to the restaurant",
 		"order not found",
+		"payment not found",
 		"payment_status is required",
 		"invalid payment_status value":
 		return true

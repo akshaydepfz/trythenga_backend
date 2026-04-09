@@ -91,6 +91,33 @@ func (h *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) 
 	helper.JSONResponse(w, payment)
 }
 
+func (h *PaymentHandler) GetOrderByPaymentID(w http.ResponseWriter, r *http.Request) {
+	paymentID := strings.TrimSpace(r.PathValue("id"))
+	if _, err := uuid.Parse(paymentID); err != nil {
+		helper.JSONError(w, "invalid payment id", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
+
+	orderDetails, err := h.service.GetOrderByPaymentID(ctx, paymentID)
+	if err != nil {
+		if service.IsPaymentValidationError(err) {
+			if err.Error() == "payment not found" {
+				helper.JSONError(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			helper.JSONError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		helper.JSONError(w, "failed to fetch order by payment id", http.StatusInternalServerError)
+		return
+	}
+
+	helper.JSONResponse(w, orderDetails)
+}
+
 func (h *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.PathValue("id"))
 	if _, err := uuid.Parse(id); err != nil {

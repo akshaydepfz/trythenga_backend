@@ -106,6 +106,42 @@ func (r *PaymentRepository) GetPaymentByID(ctx context.Context, id string) (mode
 	return scanPayment(row)
 }
 
+func (r *PaymentRepository) GetOrderByPaymentID(ctx context.Context, paymentID string) (models.Order, error) {
+	row := r.DB.QueryRowContext(ctx, `
+		SELECT o.id, o.restaurant_id, o.table_id, o.waiter_id, o.guest_count, o.order_number, o.status, o.payment_status, COALESCE(o.payment_method, ''), o.total_amount, COALESCE(o.notes, ''), o.created_at, o.updated_at
+		FROM orders o
+		INNER JOIN payments p ON p.order_id = o.id
+		WHERE p.id = $1;
+	`, paymentID)
+	return scanOrder(row)
+}
+
+func (r *PaymentRepository) GetOrderItemsByOrderID(ctx context.Context, orderID string) ([]models.OrderItem, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT id, order_id, menu_item_id, name, price, quantity, total_price, status, created_at, updated_at
+		FROM order_items
+		WHERE order_id = $1
+		ORDER BY created_at ASC;
+	`, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]models.OrderItem, 0)
+	for rows.Next() {
+		item, scanErr := scanOrderItemFromRows(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func (r *PaymentRepository) UpdatePayment(ctx context.Context, id, status string) (models.Payment, error) {
 	row := r.DB.QueryRowContext(ctx, `
 		UPDATE payments
