@@ -39,6 +39,7 @@ func main() {
 	floorHandler := handler.NewFloorHandler(db)
 	tableHandler := handler.NewTableHandler(db)
 	orderHandler := handler.NewOrderHandler(db)
+	paymentHandler := handler.NewPaymentHandler(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /restaurants", restaurantHandler.CreateRestaurant)
@@ -92,6 +93,12 @@ func main() {
 	mux.HandleFunc("PUT /api/v1/orders/items/{item_id}/status", orderHandler.UpdateItemStatus)
 	mux.HandleFunc("PUT /api/v1/orders/{id}/payment", orderHandler.CompletePayment)
 	mux.HandleFunc("GET /api/v1/tables/{table_id}/current-order", orderHandler.GetCurrentOrderByTable)
+	mux.HandleFunc("POST /api/v1/payments", paymentHandler.CreatePayment)
+	mux.HandleFunc("GET /api/v1/payments", paymentHandler.GetPaymentsByOrder)
+	mux.HandleFunc("GET /api/v1/payments/{id}", paymentHandler.GetPaymentByID)
+	mux.HandleFunc("PUT /api/v1/payments/{id}", paymentHandler.UpdatePayment)
+	mux.HandleFunc("DELETE /api/v1/payments/{id}", paymentHandler.DeletePayment)
+	mux.HandleFunc("GET /api/v1/orders/{id}/payment-summary", paymentHandler.GetOrderPaymentSummary)
 
 	server := &http.Server{
 		Addr:         ":8080",
